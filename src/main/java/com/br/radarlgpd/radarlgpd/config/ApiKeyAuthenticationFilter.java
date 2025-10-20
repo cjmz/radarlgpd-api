@@ -6,11 +6,11 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -23,20 +23,25 @@ import java.time.format.DateTimeFormatter;
  * NFR-API-001: Verifica presença e validade da API Key no header Authorization.
  */
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
 
-    @Value("${radarlgpd.api.key}")
-    private String validApiKey;
-
+    private final String validApiKey;
     private final ObjectMapper objectMapper;
+
+    public ApiKeyAuthenticationFilter(
+        @Value("${radarlgpd.api.key}") String validApiKey,
+        ObjectMapper objectMapper
+    ) {
+        this.validApiKey = validApiKey;
+        this.objectMapper = objectMapper;
+    }
 
     @Override
     protected void doFilterInternal(
-        HttpServletRequest request,
-        HttpServletResponse response,
-        FilterChain filterChain
+        @NonNull HttpServletRequest request,
+        @NonNull HttpServletResponse response,
+        @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
         
         // Permite health check sem autenticação

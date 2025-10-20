@@ -280,6 +280,46 @@ radarlgpd/
 - [ ] Relatórios de compliance automatizados
 - [ ] Alertas proativos de riscos
 
+## 🚀 Deploy
+
+### Render (Recomendado)
+
+A aplicação está pronta para deploy no [Render](https://render.com) com suporte a deploy automático via Blueprint.
+
+**Guia completo**: Consulte [`docs/DEPLOY_RENDER.md`](docs/DEPLOY_RENDER.md)
+
+**Checklist**: Veja [`DEPLOY_CHECKLIST.md`](DEPLOY_CHECKLIST.md)
+
+**Quick Start:**
+```bash
+# 1. Gere uma API Key forte
+openssl rand -hex 32
+
+# 2. Push para GitHub
+git push origin main
+
+# 3. No Render Dashboard:
+#    - New → Blueprint
+#    - Conecte o repositório
+#    - Apply
+```
+
+### Docker Local
+
+Teste o build Docker localmente antes do deploy:
+
+```bash
+# Executar script de teste
+./scripts/test-docker-build.sh
+
+# Ou manualmente:
+docker build -t radarlgpd-api .
+docker run -p 8080:8080 \
+  -e SPRING_PROFILES_ACTIVE=prod \
+  -e RADARLGPD_API_KEY=sua-chave \
+  radarlgpd-api
+```
+
 ## 🤝 Contribuindo
 
 Contribuições são bem-vindas! Por favor:

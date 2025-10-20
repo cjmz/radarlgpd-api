@@ -1,0 +1,56 @@
+# Render Blueprint - Radar LGPD API
+# https://render.com/docs/blueprint-spec
+
+services:
+  # API Spring Boot
+  - type: web
+    name: radarlgpd-api
+    runtime: docker
+    region: oregon # ou 'ohio' para estar mais próximo do Brasil
+    plan: free # ou 'starter' ($7/mês)
+    
+    # Build
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    
+    # Health Check
+    healthCheckPath: /health
+    
+    # Variáveis de Ambiente
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      
+      - key: RADARLGPD_API_KEY
+        generateValue: true # Gera um secret aleatório
+        
+      - key: RADARLGPD_RATE_LIMIT
+        value: 100
+      
+      - key: ALLOWED_ORIGINS
+        value: "*" # Ajuste conforme necessário (ex: https://seusite.com)
+      
+      # Database connection (será preenchido automaticamente quando criar o DB)
+      - key: DATABASE_URL
+        fromDatabase:
+          name: radarlgpd-db
+          property: connectionString
+      
+      - key: DB_USERNAME
+        fromDatabase:
+          name: radarlgpd-db
+          property: user
+      
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: radarlgpd-db
+          property: password
+
+  # PostgreSQL Database
+databases:
+  - name: radarlgpd-db
+    databaseName: radarlgpd
+    user: radarlgpd_user
+    region: oregon
+    plan: free # 90 dias grátis, depois $7/mês
+    ipAllowList: [] # vazio = permite todas as conexões

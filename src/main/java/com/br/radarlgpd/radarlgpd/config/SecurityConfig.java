@@ -30,8 +30,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(authorize -> authorize
                 // Permite acesso público ao health check
                 .requestMatchers("/health", "/actuator/health").permitAll()
-                // Todos os outros endpoints requerem autenticação via API Key
-                .anyRequest().authenticated()
+                // Todos os outros endpoints passam pelos filtros customizados
+                .anyRequest().permitAll()
             )
             // Adiciona filtro de rate limiting primeiro
             .addFilterBefore(rateLimitInterceptor, UsernamePasswordAuthenticationFilter.class)

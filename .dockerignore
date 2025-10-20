@@ -3,11 +3,8 @@
 .gitignore
 .gitattributes
 
-# Maven
+# Maven build output (mas mantém wrapper)
 target/
-.mvn/
-mvnw
-mvnw.cmd
 
 # IDE
 .idea/
