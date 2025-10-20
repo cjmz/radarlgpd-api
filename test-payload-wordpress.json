@@ -1,0 +1,44 @@
+{
+  "scanId": "f97af6e1-9228-4cde-9131-41c369c4ab68",
+  "siteId": "dc3c3a9386a68c3ba0be886dd69e7fecdc13345011cd2b0a0bed5f9a232a614f",
+  "consentGiven": true,
+  "scanTimestampUtc": "2025-10-20T21:51:28Z",
+  "scanDurationMs": 32060,
+  "scannerVersion": "1.0.0",
+  "environment": {
+    "wpVersion": "6.8.3",
+    "phpVersion": "8.2.29"
+  },
+  "results": [
+    {
+      "dataType": "CPF",
+      "sourceLocation": "wp_comments.comment_content",
+      "count": 2
+    },
+    {
+      "dataType": "CNPJ",
+      "sourceLocation": "wp_comments.comment_content",
+      "count": 2
+    },
+    {
+      "dataType": "CPF",
+      "sourceLocation": "wp_posts.post_content",
+      "count": 2
+    },
+    {
+      "dataType": "CNPJ",
+      "sourceLocation": "wp_posts.post_content",
+      "count": 2
+    },
+    {
+      "dataType": "CPF",
+      "sourceLocation": "wp_postmeta.meta_value",
+      "count": 2
+    },
+    {
+      "dataType": "CNPJ",
+      "sourceLocation": "wp_postmeta.meta_value",
+      "count": 2
+    }
+  ]
+}

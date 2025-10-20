@@ -18,7 +18,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface ValidDataType {
     
-    String message() default "data_type deve ser um dos valores permitidos: CPF, EMAIL, TELEFONE, RG, CNH, NOME_COMPLETO";
+    String message() default "data_type deve ser um dos valores permitidos: CPF, CNPJ, EMAIL, TELEFONE, RG, CNH, NOME_COMPLETO, ENDERECO, DATA_NASCIMENTO, CARTAO_CREDITO";
     
     Class<?>[] groups() default {};
     

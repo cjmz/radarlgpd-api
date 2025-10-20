@@ -12,6 +12,7 @@ public class ValidDataTypeValidator implements ConstraintValidator<ValidDataType
 
     private static final Set<String> ALLOWED_DATA_TYPES = Set.of(
         "CPF",
+        "CNPJ",
         "EMAIL", 
         "TELEFONE",
         "RG",
