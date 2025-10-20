@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: radarlgpd-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: radarlgpd
+      POSTGRES_USER: radarlgpd_user
+      POSTGRES_PASSWORD: radarlgpd_dev_password
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - radarlgpd-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U radarlgpd_user -d radarlgpd"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # (Opcional) PgAdmin para interface gráfica do banco
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: radarlgpd-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@radarlgpd.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - radarlgpd-network
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+networks:
+  radarlgpd-network:
+    driver: bridge

@@ -7,7 +7,7 @@
 # ============================================
 spring.datasource.url=jdbc:postgresql://localhost:5432/radarlgpd
 spring.datasource.username=radarlgpd_user
-spring.datasource.password=CHANGE_ME
+spring.datasource.password=radarlgpd_dev_password
 spring.datasource.driver-class-name=org.postgresql.Driver
 
 # ============================================

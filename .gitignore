@@ -158,3 +158,8 @@ docker-compose.override.yml
 # Application specific
 radar-lgpd.log
 scan-results-local/
+
+# Database backups
+backups/
+*.sql
+!scripts/init-db.sql

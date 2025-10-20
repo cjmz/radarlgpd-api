@@ -115,7 +115,7 @@ Recebe os resultados agregados e anonimizados de uma varredura realizada pelo sc
 
 - Java 21 ou superior
 - Maven 3.8+
-- PostgreSQL 14+
+- Docker e Docker Compose (recomendado) **OU** PostgreSQL 14+
 - Git
 
 ### 1. Clone o Repositório
@@ -127,7 +127,26 @@ cd radarlgpd-api
 
 ### 2. Configure o Banco de Dados
 
-Crie um banco de dados PostgreSQL:
+#### 🐳 Opção A: Usando Docker (Recomendado)
+
+```bash
+# Iniciar PostgreSQL com Docker Compose
+docker compose up -d postgres
+
+# Verificar se está rodando
+docker compose ps
+
+# OU usar o script helper
+./scripts/db-helper.sh start
+```
+
+Pronto! O banco já está configurado e rodando em `localhost:5432`.
+
+📚 **Para mais detalhes, veja**: [docs/SETUP_DATABASE.md](docs/SETUP_DATABASE.md)
+
+#### 🔧 Opção B: PostgreSQL Local (Manual)
+
+Se preferir instalar PostgreSQL manualmente:
 
 ```sql
 CREATE DATABASE radarlgpd;
@@ -137,24 +156,19 @@ GRANT ALL PRIVILEGES ON DATABASE radarlgpd TO radarlgpd_user;
 
 ### 3. Configure as Variáveis de Ambiente
 
-Crie um arquivo `application-local.properties` em `src/main/resources/`:
+Copie o arquivo de exemplo:
+
+```bash
+cp src/main/resources/application-local.properties.example \
+   src/main/resources/application-local.properties
+```
+
+Se estiver usando Docker, o arquivo já está pré-configurado! ✅
+
+Se estiver usando PostgreSQL local, edite o arquivo e ajuste a senha:
 
 ```properties
-# Database
-spring.datasource.url=jdbc:postgresql://localhost:5432/radarlgpd
-spring.datasource.username=radarlgpd_user
 spring.datasource.password=sua_senha_segura
-
-# JPA
-spring.jpa.hibernate.ddl-auto=update
-spring.jpa.show-sql=true
-spring.jpa.properties.hibernate.format_sql=true
-
-# Security
-radarlgpd.api.key=sua-api-key-super-secreta-aqui
-
-# Rate Limiting
-radarlgpd.rate-limit.requests-per-hour=100
 ```
 
 ### 4. Compile e Execute
@@ -163,7 +177,7 @@ radarlgpd.rate-limit.requests-per-hour=100
 # Compilar
 ./mvnw clean install
 
-# Executar
+# Executar com profile local
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
