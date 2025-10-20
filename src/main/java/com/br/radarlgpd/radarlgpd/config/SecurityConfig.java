@@ -1,33 +1,42 @@
 package com.br.radarlgpd.radarlgpd.config;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
  * Configuração de segurança da aplicação Radar LGPD.
- * 
- * Esta configuração inicial permite acesso público ao health check
- * enquanto protege outros endpoints (que serão criados).
- * 
- * TODO: Implementar autenticação via API Key para endpoints de produção
+ * NFR-API-001: Implementa autenticação via API Key.
  */
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final ApiKeyAuthenticationFilter apiKeyAuthenticationFilter;
+    private final RateLimitInterceptor rateLimitInterceptor;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
+            .csrf(csrf -> csrf.disable()) // Desabilita CSRF para APIs REST stateless
+            .sessionManagement(session -> 
+                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authorize -> authorize
                 // Permite acesso público ao health check
-                .requestMatchers("/actuator/health").permitAll()
-                // TODO: Adicionar autenticação via API Key para /v1/telemetry/**
-                .anyRequest().permitAll() // Temporário - mudar para authenticated()
+                .requestMatchers("/health", "/actuator/health").permitAll()
+                // Todos os outros endpoints requerem autenticação via API Key
+                .anyRequest().authenticated()
             )
-            .csrf(csrf -> csrf.disable()); // Desabilita CSRF para APIs REST
+            // Adiciona filtro de rate limiting primeiro
+            .addFilterBefore(rateLimitInterceptor, UsernamePasswordAuthenticationFilter.class)
+            // Depois adiciona filtro de API Key
+            .addFilterBefore(apiKeyAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
