@@ -1,24 +1,23 @@
 {
-  "scan_id": "123e4567-e89b-12d3-a456-426614174000",
-  "site_id": "site-12345-test",
-  "consent_given": true,
-  "scan_timestamp_utc": "2025-10-20T18:30:00Z",
-  "scan_duration_ms": 1500,
-  "scanner_version": "1.0.0",
+  "scanId": "123e4567-e89b-12d3-a456-426614174000",
+  "siteId": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "consentGiven": true,
+  "scanTimestampUtc": "2025-10-20T21:20:00Z",
+  "scanDurationMs": 1500,
+  "scannerVersion": "1.0.0",
   "environment": {
-    "wordpress_version": "6.4.0",
-    "php_version": "8.2.0",
-    "mysql_version": "8.0.35"
+    "wpVersion": "6.4.0",
+    "phpVersion": "8.2.0"
   },
   "results": [
     {
-      "data_type": "CPF",
-      "source_location": "wp_comments.comment_content",
+      "dataType": "CPF",
+      "sourceLocation": "wp_comments.comment_content",
       "count": 10
     },
     {
-      "data_type": "EMAIL",
-      "source_location": "wp_users.user_email",
+      "dataType": "EMAIL",
+      "sourceLocation": "wp_users.user_email",
       "count": 250
     }
   ]
