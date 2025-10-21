@@ -1,11 +1,21 @@
 package com.br.radarlgpd.radarlgpd.controller;
 
+import com.br.radarlgpd.radarlgpd.dto.ErrorResponse;
 import com.br.radarlgpd.radarlgpd.dto.ScanResultRequest;
 import com.br.radarlgpd.radarlgpd.dto.ScanResultResponse;
 import com.br.radarlgpd.radarlgpd.entity.Instance;
 import com.br.radarlgpd.radarlgpd.exception.ConsentNotGivenException;
 import com.br.radarlgpd.radarlgpd.service.InstanceService;
 import com.br.radarlgpd.radarlgpd.service.ScanResultService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +35,10 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/v1/telemetry")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(
+    name = "Telemetria", 
+    description = "Endpoints para recebimento de dados de scan do plugin WordPress (apenas dados agregados e anonimizados)"
+)
 public class TelemetryController {
 
     private final ScanResultService scanResultService;
@@ -46,8 +60,231 @@ public class TelemetryController {
      */
     @PostMapping("/scan-result")
     @Transactional // RNF-API-PERF-1.0: Atomicidade (registro + telemetria juntos)
+    @Operation(
+        summary = "Recebe dados de scan do plugin WordPress",
+        description = """
+            **Endpoint principal para telemetria de scans LGPD**
+            
+            Este endpoint suporta **dois fluxos**:
+            
+            ### 🔐 Cenário A: Plugin Autenticado (Retorna instância existente)
+            - ✅ Envia header `Authorization: Bearer {instance_token}`
+            - ✅ Resposta: `{ "status": "received" }`
+            
+            ### 🆕 Cenário B: Novo Plugin (Registro)
+            - ✅ **NÃO** envia header `Authorization`
+            - ✅ Resposta: `{ "status": "registered", "instance_token": "uuid..." }`
+            - ⚠️ **Guarde o instance_token** para usar em scans futuros!
+            
+            ---
+            
+            ### ⚠️ Regras LGPD Obrigatórias
+            
+            1. **Consentimento**: `consent_given` DEVE ser `true`
+            2. **Anonimização**: Apenas contagens agregadas (NUNCA dados pessoais)
+            3. **Rate Limit**: 100 requisições/hora por IP
+            
+            ---
+            
+            ### 📊 Exemplo de Payload
+            
+            ```json
+            {
+              "scanId": "123e4567-e89b-12d3-a456-426614174000",
+              "siteId": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "consentGiven": true,
+              "scanTimestampUtc": "2025-10-20T21:20:00Z",
+              "scanDurationMs": 1500,
+              "scannerVersion": "1.0.0-mvp",
+              "environment": {
+                "wpVersion": "6.4.0",
+                "phpVersion": "8.2.0"
+              },
+              "results": [
+                {
+                  "dataType": "CPF",
+                  "sourceLocation": "wp_comments.comment_content",
+                  "count": 152
+                }
+              ]
+            }
+            ```
+            """,
+        security = @SecurityRequirement(name = "BearerAuth")
+    )
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "200",
+            description = "✅ Scan processado com sucesso",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ScanResultResponse.class),
+                examples = {
+                    @ExampleObject(
+                        name = "Cenário A: Plugin Autenticado",
+                        description = "Resposta quando o plugin já possui um instance_token",
+                        value = """
+                            {
+                              "status": "received"
+                            }
+                            """
+                    ),
+                    @ExampleObject(
+                        name = "Cenário B: Novo Plugin (Registro)",
+                        description = "Resposta no primeiro scan (sem header Authorization). GUARDE o instance_token!",
+                        value = """
+                            {
+                              "status": "registered",
+                              "instance_token": "9f8c7b6a-5d4e-3c2b-1a0f-9e8d7c6b5a4f"
+                            }
+                            """
+                    )
+                }
+            )
+        ),
+        @ApiResponse(
+            responseCode = "400",
+            description = "❌ Payload inválido (validação de schema falhou)",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(
+                    name = "Erro de Validação",
+                    value = """
+                        {
+                          "timestamp": "2025-10-20T21:20:00Z",
+                          "status": 400,
+                          "error": "Bad Request",
+                          "message": "Erro de validação",
+                          "path": "/v1/telemetry/scan-result",
+                          "errors": [
+                            {
+                              "field": "scanId",
+                              "message": "scan_id deve ser um UUID válido"
+                            }
+                          ]
+                        }
+                        """
+                )
+            )
+        ),
+        @ApiResponse(
+            responseCode = "401",
+            description = "❌ Token de autenticação inválido ou expirado",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(
+                    name = "Token Inválido",
+                    value = """
+                        {
+                          "timestamp": "2025-10-20T21:20:00Z",
+                          "status": 401,
+                          "error": "Unauthorized",
+                          "message": "Token de instância inválido ou expirado",
+                          "path": "/v1/telemetry/scan-result"
+                        }
+                        """
+                )
+            )
+        ),
+        @ApiResponse(
+            responseCode = "403",
+            description = "❌ Consentimento não concedido (LGPD Art. 7º)",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(
+                    name = "Sem Consentimento",
+                    value = """
+                        {
+                          "timestamp": "2025-10-20T21:20:00Z",
+                          "status": 403,
+                          "error": "Forbidden",
+                          "message": "Consentimento não concedido. Dados não podem ser processados conforme LGPD Art. 7º",
+                          "path": "/v1/telemetry/scan-result"
+                        }
+                        """
+                )
+            )
+        ),
+        @ApiResponse(
+            responseCode = "429",
+            description = "❌ Rate limit excedido (máx. 100 requisições/hora)",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(
+                    name = "Rate Limit Excedido",
+                    value = """
+                        {
+                          "timestamp": "2025-10-20T21:20:00Z",
+                          "status": 429,
+                          "error": "Too Many Requests",
+                          "message": "Rate limit excedido. Máximo de 100 requisições por hora.",
+                          "path": "/v1/telemetry/scan-result"
+                        }
+                        """
+                )
+            )
+        ),
+        @ApiResponse(
+            responseCode = "500",
+            description = "❌ Erro interno do servidor",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ErrorResponse.class)
+            )
+        )
+    })
     public ResponseEntity<ScanResultResponse> receiveScanResult(
+        @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            description = "Dados agregados do scan (apenas contagens, NUNCA dados pessoais)",
+            required = true,
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = ScanResultRequest.class),
+                examples = @ExampleObject(
+                    name = "Exemplo Completo",
+                    value = """
+                        {
+                          "scanId": "123e4567-e89b-12d3-a456-426614174000",
+                          "siteId": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                          "consentGiven": true,
+                          "scanTimestampUtc": "2025-10-20T21:20:00Z",
+                          "scanDurationMs": 1500,
+                          "scannerVersion": "1.0.0-mvp",
+                          "environment": {
+                            "wpVersion": "6.4.0",
+                            "phpVersion": "8.2.0"
+                          },
+                          "results": [
+                            {
+                              "dataType": "CPF",
+                              "sourceLocation": "wp_comments.comment_content",
+                              "count": 152
+                            },
+                            {
+                              "dataType": "EMAIL",
+                              "sourceLocation": "wp_users.user_email",
+                              "count": 250
+                            }
+                          ]
+                        }
+                        """
+                )
+            )
+        )
         @Valid @RequestBody ScanResultRequest request,
+        @Parameter(
+            description = """
+                Token de autenticação da instância (opcional).
+                
+                - **Com token**: Fluxo autenticado (retorna status: received)
+                - **Sem token**: Fluxo de registro (retorna status: registered + instance_token)
+                """,
+            example = "Bearer 9f8c7b6a-5d4e-3c2b-1a0f-9e8d7c6b5a4f"
+        )
         @RequestHeader(value = "Authorization", required = false) String authHeader
     ) {
         log.info("Recebendo scan result - scan_id: {}, auth_presente: {}", 

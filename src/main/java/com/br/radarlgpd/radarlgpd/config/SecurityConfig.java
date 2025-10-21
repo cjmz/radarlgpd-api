@@ -30,8 +30,16 @@ public class SecurityConfig {
             .authorizeHttpRequests(authorize -> authorize
                 // Permite acesso público ao health check
                 .requestMatchers("/health", "/actuator/health").permitAll()
-                // Todos os outros endpoints passam pelos filtros customizados
-                .anyRequest().permitAll()
+                // Permite acesso público ao Swagger UI e OpenAPI docs
+                .requestMatchers(
+                    "/swagger-ui/**",
+                    "/swagger-ui.html",
+                    "/v3/api-docs/**",
+                    "/swagger-resources/**",
+                    "/webjars/**"
+                ).permitAll()
+                // Todos os outros endpoints devem ser autenticados
+                .anyRequest().authenticated()
             )
             // Adiciona filtro de rate limiting primeiro
             .addFilterBefore(rateLimitInterceptor, UsernamePasswordAuthenticationFilter.class)
