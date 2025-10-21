@@ -32,6 +32,13 @@ public class ScanResult {
     @Column(nullable = false, unique = true, length = 36)
     private String scanId;
 
+    /**
+     * ID da instância que enviou este scan (FK para tabela instances).
+     * Permite rastrear todos os scans de uma mesma instalação do plugin.
+     */
+    @Column(nullable = false)
+    private Long instanceId;
+
     @Column(nullable = false, length = 64)
     private String siteId;
 

@@ -132,6 +132,28 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handler para token de instância inválido, expirado ou banido.
+     * HTTP 401 Unauthorized (RF-API-2.1)
+     */
+    @ExceptionHandler(InvalidInstanceTokenException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidInstanceToken(
+        InvalidInstanceTokenException ex,
+        HttpServletRequest request
+    ) {
+        log.warn("Token de instância inválido no path {}: {}", request.getRequestURI(), ex.getMessage());
+        
+        ErrorResponse errorResponse = ErrorResponse.builder()
+            .timestamp(getCurrentTimestamp())
+            .status(HttpStatus.UNAUTHORIZED.value())
+            .error("Unauthorized")
+            .message("Token de instância inválido, expirado ou banido")
+            .path(request.getRequestURI())
+            .build();
+        
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+    }
+
+    /**
      * Handler para rate limit excedido.
      * HTTP 429 Too Many Requests
      */

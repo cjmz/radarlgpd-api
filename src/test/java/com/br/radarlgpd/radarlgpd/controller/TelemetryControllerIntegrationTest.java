@@ -3,7 +3,12 @@ package com.br.radarlgpd.radarlgpd.controller;
 import com.br.radarlgpd.radarlgpd.dto.DataResult;
 import com.br.radarlgpd.radarlgpd.dto.Environment;
 import com.br.radarlgpd.radarlgpd.dto.ScanResultRequest;
+import com.br.radarlgpd.radarlgpd.entity.Instance;
+import com.br.radarlgpd.radarlgpd.repository.DataResultRepository;
+import com.br.radarlgpd.radarlgpd.repository.InstanceRepository;
+import com.br.radarlgpd.radarlgpd.repository.ScanResultRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +17,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
@@ -25,6 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@Transactional
 class TelemetryControllerIntegrationTest {
 
     @Autowired
@@ -33,20 +40,36 @@ class TelemetryControllerIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private InstanceRepository instanceRepository;
+
+    @Autowired
+    private ScanResultRepository scanResultRepository;
+
+    @Autowired
+    private DataResultRepository dataResultRepository;
+
     @Value("${radarlgpd.api.key}")
     private String validApiKey;
 
+    @BeforeEach
+    void setUp() {
+        dataResultRepository.deleteAll();
+        scanResultRepository.deleteAll();
+        instanceRepository.deleteAll();
+    }
+
     @Test
-    @DisplayName("NFR-API-001: Deve retornar 401 quando API Key está ausente")
-    void deveRetornar401QuandoApiKeyAusente() throws Exception {
+    @DisplayName("RF-API-3.0: Sem Authorization deve registrar nova instância (fluxo de registro)")
+    void devRegistrarNovaInstanciaSemAuthorization() throws Exception {
         ScanResultRequest request = createValidRequest();
 
         mockMvc.perform(post("/v1/telemetry/scan-result")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-            .andExpect(status().isUnauthorized())
-            .andExpect(jsonPath("$.status").value(401))
-            .andExpect(jsonPath("$.error").value("Unauthorized"));
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("registered"))
+            .andExpect(jsonPath("$.instance_token").exists());
     }
 
     @Test
@@ -119,19 +142,27 @@ class TelemetryControllerIntegrationTest {
     }
 
     @Test
-    @DisplayName("Deve processar scan válido com sucesso")
+    @DisplayName("RF-API-2.0: Deve processar scan válido de instância autenticada com sucesso")
     void deveProcessarScanValidoComSucesso() throws Exception {
+        // Cria instância pré-existente
+        Instance instance = Instance.builder()
+            .instanceToken(UUID.randomUUID().toString())
+            .siteId("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
+            .status("active")
+            .scannerVersionAtRegistration("1.0.0")
+            .scanCount(0)
+            .build();
+        instance = instanceRepository.save(instance);
+
         ScanResultRequest request = createValidRequest();
 
         mockMvc.perform(post("/v1/telemetry/scan-result")
-                .header("Authorization", "Bearer " + validApiKey)
+                .header("Authorization", "Bearer " + instance.getInstanceToken())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.scanId").value(request.getScanId()))
-            .andExpect(jsonPath("$.status").value("SUCCESS"))
-            .andExpect(jsonPath("$.message").exists())
-            .andExpect(jsonPath("$.receivedAt").exists());
+            .andExpect(jsonPath("$.status").value("received"))
+            .andExpect(jsonPath("$.instance_token").doesNotExist()); // Não retorna token no fluxo autenticado
     }
 
     @Test

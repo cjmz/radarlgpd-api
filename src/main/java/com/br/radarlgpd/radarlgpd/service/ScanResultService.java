@@ -30,12 +30,47 @@ public class ScanResultService {
     private final DataResultRepository dataResultRepository;
 
     /**
-     * Processa um scan result recebido do plugin WordPress.
+     * Processa um scan result associado a uma instância específica.
+     * Método principal usado pelos fluxos autenticado e de registro (RF-API-2.2, RF-API-3.2).
      * 
      * @param request dados do scan
-     * @return resposta com status do processamento
+     * @param instanceId ID da instância (obtido por validação de token ou registro)
+     * @return true se o scan foi processado, false se foi ignorado (duplicado)
      * @throws ConsentNotGivenException se consentimento não foi dado
      */
+    @Transactional
+    public boolean processScanForInstance(ScanResultRequest request, Long instanceId) {
+        log.info("Processando scan_id: {} para instance_id: {}", request.getScanId(), instanceId);
+        
+        // RF-API-1.1: Validação de Consentimento (obrigatória em ambos os fluxos)
+        validateConsent(request);
+        
+        // Verifica se já existe scan com este ID (idempotência)
+        if (scanResultRepository.existsByScanId(request.getScanId())) {
+            log.warn("Scan duplicado detectado: {}", request.getScanId());
+            return false; // Idempotente: não gera erro, apenas ignora
+        }
+        
+        // Converte e persiste
+        ScanResult scanResult = convertToEntity(request, instanceId);
+        scanResult = scanResultRepository.save(scanResult);
+        
+        // Persiste os resultados detalhados
+        saveDataResults(scanResult, request);
+        
+        log.info("Scan processado com sucesso: {} - instance_id: {}, {} resultados encontrados", 
+            request.getScanId(), instanceId, request.getResults().size());
+        
+        return true;
+    }
+
+    /**
+     * Processa um scan result recebido do plugin WordPress (MÉTODO LEGADO).
+     * Mantido para compatibilidade, mas deve ser substituído por processScanForInstance.
+     * 
+     * @deprecated Use {@link #processScanForInstance(ScanResultRequest, Long)} ao invés
+     */
+    @Deprecated(since = "1.1.0", forRemoval = true)
     @Transactional
     public ScanResultResponse processScan(ScanResultRequest request) {
         log.info("Processando scan_id: {}", request.getScanId());
@@ -82,9 +117,10 @@ public class ScanResultService {
     /**
      * Converte DTO para entidade JPA.
      */
-    private ScanResult convertToEntity(ScanResultRequest request) {
+    private ScanResult convertToEntity(ScanResultRequest request, Long instanceId) {
         return ScanResult.builder()
             .scanId(request.getScanId())
+            .instanceId(instanceId)
             .siteId(request.getSiteId())
             .consentGiven(request.getConsentGiven())
             .scanTimestampUtc(OffsetDateTime.parse(request.getScanTimestampUtc(), 
@@ -95,6 +131,16 @@ public class ScanResultService {
             .phpVersion(request.getEnvironment().getPhpVersion())
             .receivedAt(OffsetDateTime.now())
             .build();
+    }
+
+    /**
+     * Converte DTO para entidade JPA (MÉTODO LEGADO sem instanceId).
+     * 
+     * @deprecated Use {@link #convertToEntity(ScanResultRequest, Long)} ao invés
+     */
+    @Deprecated(since = "1.1.0", forRemoval = true)
+    private ScanResult convertToEntity(ScanResultRequest request) {
+        return convertToEntity(request, null);
     }
 
     /**
@@ -119,14 +165,15 @@ public class ScanResultService {
     }
 
     /**
-     * Constrói resposta padronizada.
+     * Constrói resposta padronizada (MÉTODO LEGADO).
+     * 
+     * @deprecated Não mais utilizado na nova arquitetura (RF-API-2.3, RF-API-3.3)
      */
+    @Deprecated(since = "1.1.0", forRemoval = true)
     private ScanResultResponse buildResponse(String scanId, String status, String message) {
         return ScanResultResponse.builder()
-            .scanId(scanId)
             .status(status)
             .message(message)
-            .receivedAt(OffsetDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
             .build();
     }
 }

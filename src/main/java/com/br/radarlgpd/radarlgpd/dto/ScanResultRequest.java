@@ -34,7 +34,11 @@ public class ScanResultRequest {
     @ValidSiteId
     private String siteId;
 
-    @NotNull(message = "consent_given é obrigatório")
+    /**
+     * Consentimento do usuário (LGPD Art. 7º).
+     * Não usa @NotNull aqui para permitir que o controller retorne 403 (Forbidden)
+     * ao invés de 400 (Bad Request) quando ausente.
+     */
     private Boolean consentGiven;
 
     @NotBlank(message = "scan_timestamp_utc é obrigatório")

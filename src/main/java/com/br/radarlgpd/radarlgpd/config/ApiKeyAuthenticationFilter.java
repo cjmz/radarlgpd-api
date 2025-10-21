@@ -52,7 +52,23 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
 
         String authHeader = request.getHeader("Authorization");
         
-        // Verifica se header está presente
+        // ÉPICO 1.1: Permite /v1/telemetry/scan-result sem Authorization (fluxo de registro)
+        // O controller decidirá qual fluxo seguir baseado na presença do header
+        if (request.getRequestURI().equals("/v1/telemetry/scan-result")) {
+            if (authHeader == null || authHeader.isBlank()) {
+                // Sem Authorization: fluxo de registro de nova instância
+                log.debug("Fluxo de registro de instância (sem Authorization header)");
+                filterChain.doFilter(request, response);
+                return;
+            }
+            // Com Authorization: valida como instance token ou API key
+            // Deixa o controller decidir se é válido ou não
+            log.debug("Fluxo autenticado (com Authorization header)");
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // Para outros endpoints, exige Authorization
         if (authHeader == null || authHeader.isBlank()) {
             log.warn("Requisição sem API Key no path: {}", request.getRequestURI());
             handleUnauthorized(response, request.getRequestURI(), 
