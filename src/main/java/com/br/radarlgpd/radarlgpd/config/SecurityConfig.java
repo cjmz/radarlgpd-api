@@ -38,6 +38,10 @@ public class SecurityConfig {
                     "/swagger-resources/**",
                     "/webjars/**"
                 ).permitAll()
+                // ÉPICO 1.1: Permite /v1/telemetry/scan-result sem autenticação
+                // (RF-API-3.0: Fluxo de Registro de Nova Instância)
+                // O controller decide o fluxo baseado na presença do header Authorization
+                .requestMatchers("/v1/telemetry/scan-result").permitAll()
                 // Todos os outros endpoints devem ser autenticados
                 .anyRequest().authenticated()
             )
